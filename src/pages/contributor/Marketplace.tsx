@@ -7,11 +7,14 @@ import AppLayout from "@/components/AppLayout";
 import CustomButton from "@/components/ui/custom-button";
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
+const MERCHANT_WALLET = import.meta.env.VITE_MERCHANT_WALLET;
+
 const Marketplace: React.FC = () => {
   const { publicKey, sendTransaction } = useWallet();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [processingNftId, setProcessingNftId] = useState<number | null>(null);
+  const [transactionSignature, setTransactionSignature] = useState<string | null>(null);
 
   const latestPackages = [
     {
@@ -91,7 +94,7 @@ const Marketplace: React.FC = () => {
     }
   ];
 
-  const handlePurchaseNft = async (nftId: number) => {
+  const handlePurchaseNft = async (nftId: number, price: number) => {
     if (!publicKey) {
       toast({
         title: "Wallet not connected",
@@ -102,41 +105,77 @@ const Marketplace: React.FC = () => {
     }
     
     setProcessingNftId(nftId);
+    setTransactionSignature(null);
     
     try {
       const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+      
+      if (!MERCHANT_WALLET) {
+        throw new Error('Merchant wallet not configured');
+      }
+
+      // Check wallet balance
+      const balance = await connection.getBalance(publicKey);
+      const requiredBalance = price * LAMPORTS_PER_SOL;
+      
+      if (balance < requiredBalance) {
+        throw new Error(`Insufficient balance. Required: ${requiredBalance / LAMPORTS_PER_SOL} SOL, Available: ${balance / LAMPORTS_PER_SOL} SOL`);
+      }
       
       // Create a transaction
       const transaction = new Transaction().add(
         SystemProgram.transfer({
           fromPubkey: publicKey,
-          toPubkey: new PublicKey('YOUR_MERCHANT_WALLET_ADDRESS'), // Replace with your merchant wallet
-          lamports: 0.1 * LAMPORTS_PER_SOL, // 0.1 SOL
+          toPubkey: new PublicKey(MERCHANT_WALLET),
+          lamports: requiredBalance,
         })
       );
 
       // Get the latest blockhash
-      const { blockhash } = await connection.getLatestBlockhash();
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = publicKey;
 
       // Send the transaction
       const signature = await sendTransaction(transaction, connection);
+      console.log('Transaction sent:', signature);
       
-      // Wait for confirmation
-      await connection.confirmTransaction(signature, 'confirmed');
+      // Wait for confirmation with timeout
+      const confirmation = await connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight
+      }, 'confirmed');
+      
+      if (confirmation.value.err) {
+        console.error('Transaction confirmation error:', confirmation.value.err);
+        throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+      }
+      
+      setTransactionSignature(signature);
       
       toast({
         title: "Purchase successful!",
-        description: "You've successfully purchased this NFT collection",
+        description: `Transaction confirmed: ${signature.slice(0, 8)}...`,
       });
       
       navigate(`/nft/${nftId}`);
     } catch (error) {
       console.error('Transaction error:', error);
+      let errorMessage = "Could not complete your purchase";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      }
+      
       toast({
         title: "Transaction failed",
-        description: "Could not complete your purchase",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -168,17 +207,30 @@ const Marketplace: React.FC = () => {
                     {pkg.content}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col gap-2">
                   <span className="text-blue-600 font-bold">{pkg.price} SOL</span>
                   {!publicKey ? (
                     <SolanaWalletButton />
                   ) : (
-                    <CustomButton 
-                      onClick={() => handlePurchaseNft(pkg.id)}
-                      disabled={processingNftId === pkg.id}
-                    >
-                      {processingNftId === pkg.id ? "Processing..." : "Purchase"}
-                    </CustomButton>
+                    <div className="space-y-2">
+                      <CustomButton 
+                        onClick={() => handlePurchaseNft(pkg.id, pkg.price)}
+                        disabled={processingNftId === pkg.id}
+                        className="w-full"
+                      >
+                        {processingNftId === pkg.id ? "Processing..." : "Purchase"}
+                      </CustomButton>
+                      {transactionSignature && processingNftId === pkg.id && (
+                        <a 
+                          href={`https://explorer.solana.com/tx/${transactionSignature}?cluster=devnet`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium block text-center"
+                        >
+                          View on Solana Explorer →
+                        </a>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -213,14 +265,26 @@ const Marketplace: React.FC = () => {
                 {!publicKey ? (
                   <SolanaWalletButton />
                 ) : (
-                  <CustomButton 
-                    variant="secondary" 
-                    className="w-full"
-                    onClick={() => handlePurchaseNft(pkg.id)}
-                    disabled={processingNftId === pkg.id}
-                  >
-                    {processingNftId === pkg.id ? "Processing..." : "Purchase Now"}
-                  </CustomButton>
+                  <div className="space-y-2">
+                    <CustomButton 
+                      variant="secondary" 
+                      className="w-full"
+                      onClick={() => handlePurchaseNft(pkg.id, pkg.salePrice)}
+                      disabled={processingNftId === pkg.id}
+                    >
+                      {processingNftId === pkg.id ? "Processing..." : "Purchase Now"}
+                    </CustomButton>
+                    {transactionSignature && processingNftId === pkg.id && (
+                      <a 
+                        href={`https://explorer.solana.com/tx/${transactionSignature}?cluster=devnet`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-white hover:text-gray-200 text-sm font-medium block text-center"
+                      >
+                        View on Solana Explorer →
+                      </a>
+                    )}
+                  </div>
                 )}
               </div>
             ))}
