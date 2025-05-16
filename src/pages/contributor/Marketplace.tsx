@@ -6,6 +6,7 @@ import SolanaWalletButton from "@/components/SolanaWalletButton";
 import AppLayout from "@/components/AppLayout";
 import CustomButton from "@/components/ui/custom-button";
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { getPurchasedCourses } from '@/utils/purchaseVerification';
 
 const MERCHANT_WALLET = import.meta.env.VITE_MERCHANT_WALLET;
 
@@ -15,6 +16,8 @@ const Marketplace: React.FC = () => {
   const navigate = useNavigate();
   const [processingNftId, setProcessingNftId] = useState<number | null>(null);
   const [transactionSignature, setTransactionSignature] = useState<string | null>(null);
+  const [purchasedCourses, setPurchasedCourses] = useState<number[]>([]);
+  const [isLoadingPurchases, setIsLoadingPurchases] = useState(true);
 
   const latestPackages = [
     {
@@ -93,6 +96,58 @@ const Marketplace: React.FC = () => {
       timeLeft: "3d 12h"
     }
   ];
+
+  // Load purchased courses
+  React.useEffect(() => {
+    let isMounted = true;
+
+    const loadPurchasedCourses = async () => {
+      if (!publicKey) {
+        if (isMounted) {
+          setPurchasedCourses([]);
+          setIsLoadingPurchases(false);
+        }
+        return;
+      }
+
+      try {
+        // Get all course IDs and their prices
+        const courseIds = [
+          ...latestPackages.map(pkg => pkg.id),
+          ...premiumPackages.map(pkg => pkg.id)
+        ];
+        
+        const prices = {
+          ...latestPackages.reduce((acc, pkg) => ({ ...acc, [pkg.id]: pkg.price }), {}),
+          ...premiumPackages.reduce((acc, pkg) => ({ ...acc, [pkg.id]: pkg.salePrice }), {})
+        };
+
+        const purchased = await getPurchasedCourses(publicKey, courseIds, prices);
+        
+        if (isMounted) {
+          setPurchasedCourses(purchased);
+          setIsLoadingPurchases(false);
+        }
+      } catch (error) {
+        console.error('Error loading purchased courses:', error);
+        if (isMounted) {
+          setPurchasedCourses([]);
+          setIsLoadingPurchases(false);
+          toast({
+            title: "Error loading purchases",
+            description: "There was a problem loading your purchased courses. Please try again.",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+
+    loadPurchasedCourses();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [publicKey, toast]);
 
   const handlePurchaseNft = async (nftId: number, price: number) => {
     if (!publicKey) {
@@ -197,17 +252,66 @@ const Marketplace: React.FC = () => {
         variant: "destructive",
       });
     } finally {
-      setProcessingNftId(null);
+      setProcessingNft(null);
     }
   };
 
   return (
     <AppLayout>
-      <div className="w-full">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-purple-800 mb-2">Marketplace</h1>
-          <p className="text-gray-600">Discover and buy NFT collections to enhance your language learning</p>
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Language Learning Marketplace</h1>
+          <p className="text-xl text-gray-600">Discover and purchase language learning courses</p>
         </div>
+
+        {publicKey && (
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Purchased Courses</h2>
+            {isLoadingPurchases ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto" />
+                <p className="mt-4 text-gray-600">Loading your courses...</p>
+              </div>
+            ) : purchasedCourses.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {purchasedCourses.map(courseId => {
+                  const course = latestPackages.find(p => p.id === courseId) || 
+                               premiumPackages.find(p => p.id === courseId);
+                  if (!course) return null;
+                  
+                  return (
+                    <div key={courseId} className="bg-white rounded-xl shadow-lg overflow-hidden">
+                      <div className="p-6">
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">{course.title}</h3>
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs">
+                            {course.language}
+                          </span>
+                          <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs">
+                            {'content' in course ? course.content : 'Premium'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-500">{course.language}</span>
+                          <CustomButton
+                            variant="gradient-blue"
+                            onClick={() => navigate(`/course/${courseId}/learn`)}
+                          >
+                            Continue Learning
+                          </CustomButton>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-gray-50 rounded-lg">
+                <p className="text-gray-600">You haven't purchased any courses yet.</p>
+              </div>
+            )}
+          </div>
+        )}
 
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Latest Packages</h2>

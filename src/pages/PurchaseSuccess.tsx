@@ -90,7 +90,7 @@ const PurchaseSuccess: React.FC = () => {
               <CustomButton
                 variant="gradient-blue"
                 className="flex-1"
-                onClick={() => navigate(`/nft/${purchaseDetails.nftId}`)}
+                onClick={() => navigate(`/course/${purchaseDetails.nftId}`)}
               >
                 View Course
               </CustomButton>

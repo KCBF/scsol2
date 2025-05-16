@@ -15,6 +15,8 @@ import Settings from '@/pages/Settings';
 import { RoleProvider } from '@/context/RoleContext';
 import SolanaWalletProvider from '@/components/SolanaWalletProvider';
 import PurchaseSuccess from './pages/PurchaseSuccess';
+import CourseDetails from './pages/CourseDetails';
+import CourseContent from './pages/CourseContent';
 
 // Create a new QueryClient instance
 const queryClient = new QueryClient();
@@ -37,6 +39,8 @@ const App: React.FC = () => {
                 <Route path="/contributor/marketplace" element={<Marketplace />} />
                 <Route path="/contributor/create-nft" element={<CreateNFT />} />
                 <Route path="/purchase-success" element={<PurchaseSuccess />} />
+                <Route path="/course/:courseId" element={<CourseDetails />} />
+                <Route path="/course/:courseId/learn" element={<CourseContent />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <Toaster />
