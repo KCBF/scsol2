@@ -1,8 +1,10 @@
+
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useToast } from "@/hooks/use-toast";
 import CustomButton from "@/components/ui/custom-button";
+import SolanaWalletButton from "@/components/SolanaWalletButton";
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 const PaymentScene: React.FC = () => {

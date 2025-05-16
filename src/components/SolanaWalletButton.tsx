@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useSolanaWallet } from '@/hooks/useSolanaWallet';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
@@ -14,4 +15,4 @@ const SolanaWalletButton: React.FC = () => {
   );
 };
 
-export default SolanaWalletButton; 
+export default SolanaWalletButton;
