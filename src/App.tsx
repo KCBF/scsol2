@@ -41,6 +41,8 @@ const App: React.FC = () => {
                 <Route path="/purchase-success" element={<PurchaseSuccess />} />
                 <Route path="/course/:courseId" element={<CourseDetails />} />
                 <Route path="/course/:courseId/learn" element={<CourseContent />} />
+                <Route path="/courses" element={<Marketplace />} />
+                <Route path="/marketplace" element={<Marketplace />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <Toaster />

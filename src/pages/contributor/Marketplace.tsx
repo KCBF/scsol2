@@ -2,13 +2,39 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useToast } from "@/hooks/use-toast";
-import SolanaWalletButton from "@/components/SolanaWalletButton";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import AppLayout from "@/components/AppLayout";
-import CustomButton from "@/components/ui/custom-button";
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { getPurchasedCourses } from '@/utils/purchaseVerification';
+import { ShoppingCart, GraduationCap, Clock, Sparkles } from "lucide-react";
 
 const MERCHANT_WALLET = import.meta.env.VITE_MERCHANT_WALLET;
+
+interface RegularCourse {
+  id: number;
+  title: string;
+  language: string;
+  content: string;
+  price: number;
+  creator: string;
+  description: string;
+  progress?: number;
+}
+
+interface PremiumCourse {
+  id: number;
+  title: string;
+  language: string;
+  regularPrice: number;
+  salePrice: number;
+  timeLeft: string;
+  description: string;
+  progress?: number;
+}
+
+type Course = RegularCourse | PremiumCourse;
 
 const Marketplace: React.FC = () => {
   const { publicKey, sendTransaction } = useWallet();
@@ -16,33 +42,38 @@ const Marketplace: React.FC = () => {
   const navigate = useNavigate();
   const [processingNftId, setProcessingNftId] = useState<number | null>(null);
   const [transactionSignature, setTransactionSignature] = useState<string | null>(null);
-  const [purchasedCourses, setPurchasedCourses] = useState<number[]>([]);
-  const [isLoadingPurchases, setIsLoadingPurchases] = useState(true);
+  const [isLoadingPurchases, setIsLoadingPurchases] = useState(false);
 
-  const latestPackages = [
+  const latestPackages: RegularCourse[] = [
     {
-      id: 1,
-      title: "100 Essential Spanish Nouns",
-      language: "Spanish",
+      id: 5,
+      title: "Vietnamese for English Speakers",
+      language: "Vietnamese",
       content: "A1 Level",
       price: 0.1,
-      creator: "@LinguaLuna"
+      creator: "@VietMaster",
+      description: "Master Vietnamese language essentials for English speakers",
+      progress: 0
     },
     {
-      id: 2,
+      id: 6,
+      title: "English for Vietnamese Speakers",
+      language: "English",
+      content: "A1 Level",
+      price: 0.1,
+      creator: "@EnglishPro",
+      description: "Essential English for Vietnamese speakers",
+      progress: 0
+    },
+    {
+      id: 3,
       title: "Business English Phrases",
       language: "English",
       content: "B2 Level",
       price: 0.1,
-      creator: "@EnglishPro"
-    },
-    {
-      id: 3,
-      title: "Japanese Kanji Basics",
-      language: "Japanese",
-      content: "N5 Level",
-      price: 0.1,
-      creator: "@NihongoMaster"
+      creator: "@EnglishPro",
+      description: "Professional English for business communication",
+      progress: 0
     },
     {
       id: 4,
@@ -50,34 +81,21 @@ const Marketplace: React.FC = () => {
       language: "French",
       content: "A2 Level",
       price: 0.1,
-      creator: "@ParisianTalks"
-    },
-    {
-      id: 5,
-      title: "German Grammar Essentials",
-      language: "German",
-      content: "B1 Level",
-      price: 0.1,
-      creator: "@DeutschGrammar"
-    },
-    {
-      id: 6,
-      title: "Italian Food Vocabulary",
-      language: "Italian",
-      content: "A1 Level",
-      price: 0.1,
-      creator: "@CiaoItalia"
+      creator: "@ParisianTalks",
+      description: "Essential French conversation skills",
+      progress: 0
     }
   ];
 
-  const premiumPackages = [
+  const premiumPackages: PremiumCourse[] = [
     {
       id: 101,
-      title: "Complete Spanish Course Bundle",
-      language: "Spanish",
+      title: "Complete Vietnamese Course Bundle",
+      language: "Vietnamese",
       regularPrice: 0.5,
       salePrice: 0.35,
-      timeLeft: "2d 4h"
+      timeLeft: "2d 4h",
+      description: "Comprehensive Vietnamese language learning package"
     },
     {
       id: 102,
@@ -85,75 +103,22 @@ const Marketplace: React.FC = () => {
       language: "English",
       regularPrice: 0.6,
       salePrice: 0.45,
-      timeLeft: "1d 6h"
-    },
-    {
-      id: 103,
-      title: "Japanese Immersion Pack",
-      language: "Japanese",
-      regularPrice: 0.55,
-      salePrice: 0.4,
-      timeLeft: "3d 12h"
+      timeLeft: "1d 6h",
+      description: "Advanced business English communication skills"
     }
   ];
 
-  // Load purchased courses
-  React.useEffect(() => {
-    let isMounted = true;
-
-    const loadPurchasedCourses = async () => {
-      if (!publicKey) {
-        if (isMounted) {
-          setPurchasedCourses([]);
-          setIsLoadingPurchases(false);
-        }
-        return;
-      }
-
-      try {
-        // Get all course IDs and their prices
-        const courseIds = [
-          ...latestPackages.map(pkg => pkg.id),
-          ...premiumPackages.map(pkg => pkg.id)
-        ];
-        
-        const prices = {
-          ...latestPackages.reduce((acc, pkg) => ({ ...acc, [pkg.id]: pkg.price }), {}),
-          ...premiumPackages.reduce((acc, pkg) => ({ ...acc, [pkg.id]: pkg.salePrice }), {})
-        };
-
-        const purchased = await getPurchasedCourses(publicKey, courseIds, prices);
-        
-        if (isMounted) {
-          setPurchasedCourses(purchased);
-          setIsLoadingPurchases(false);
-        }
-      } catch (error) {
-        console.error('Error loading purchased courses:', error);
-        if (isMounted) {
-          setPurchasedCourses([]);
-          setIsLoadingPurchases(false);
-          toast({
-            title: "Error loading purchases",
-            description: "There was a problem loading your purchased courses. Please try again.",
-            variant: "destructive",
-          });
-        }
-      }
-    };
-
-    loadPurchasedCourses();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [publicKey, toast]);
+  // Get all course IDs for the purchased section
+  const allCourseIds = [
+    ...latestPackages.map(pkg => pkg.id),
+    ...premiumPackages.map(pkg => pkg.id)
+  ];
 
   const handlePurchaseNft = async (nftId: number, price: number) => {
     if (!publicKey) {
       toast({
         title: "Wallet not connected",
-        description: "Please connect your wallet to purchase this NFT",
+        description: "Please connect your wallet to purchase this course",
         variant: "destructive",
       });
       return;
@@ -211,7 +176,7 @@ const Marketplace: React.FC = () => {
       
       toast({
         title: "Purchase successful!",
-        description: `Transaction confirmed: ${signature.slice(0, 8)}...`,
+        description: "Your course NFT will be minted shortly. Please wait...",
       });
       
       // Find the purchased package details
@@ -239,11 +204,6 @@ const Marketplace: React.FC = () => {
       
       if (error instanceof Error) {
         errorMessage = error.message;
-        console.error('Error details:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
-        });
       }
       
       toast({
@@ -252,7 +212,7 @@ const Marketplace: React.FC = () => {
         variant: "destructive",
       });
     } finally {
-      setProcessingNft(null);
+      setProcessingNftId(null);
     }
   };
 
@@ -266,149 +226,123 @@ const Marketplace: React.FC = () => {
 
         {publicKey && (
           <div className="mb-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Purchased Courses</h2>
-            {isLoadingPurchases ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto" />
-                <p className="mt-4 text-gray-600">Loading your courses...</p>
-              </div>
-            ) : purchasedCourses.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {purchasedCourses.map(courseId => {
-                  const course = latestPackages.find(p => p.id === courseId) || 
-                               premiumPackages.find(p => p.id === courseId);
-                  if (!course) return null;
-                  
-                  return (
-                    <div key={courseId} className="bg-white rounded-xl shadow-lg overflow-hidden">
-                      <div className="p-6">
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">{course.title}</h3>
-                        <div className="flex items-center gap-2 mb-4">
-                          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs">
-                            {course.language}
-                          </span>
-                          <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs">
-                            {'content' in course ? course.content : 'Premium'}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-500">{course.language}</span>
-                          <CustomButton
-                            variant="gradient-blue"
-                            onClick={() => navigate(`/course/${courseId}/learn`)}
-                          >
-                            Continue Learning
-                          </CustomButton>
-                        </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <GraduationCap className="w-6 h-6" />
+              Your Courses
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {allCourseIds.map(courseId => {
+                const course = latestPackages.find(p => p.id === courseId) || 
+                             premiumPackages.find(p => p.id === courseId);
+                if (!course) return null;
+                
+                return (
+                  <Card key={courseId} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <CardTitle className="text-xl">{course.title}</CardTitle>
+                      <CardDescription>by {'creator' in course ? course.creator : 'StudyCake'}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2 mb-4">
+                        <Badge variant="secondary">{course.language}</Badge>
+                        <Badge variant="outline">{'content' in course ? course.content : 'Premium'}</Badge>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8 bg-gray-50 rounded-lg">
-                <p className="text-gray-600">You haven't purchased any courses yet.</p>
-              </div>
-            )}
+                      <Progress value={course.progress || 0} className="mb-4" />
+                      <p className="text-sm text-gray-500">Progress: {course.progress || 0}%</p>
+                    </CardContent>
+                    <CardFooter>
+                      <Button
+                        variant="default"
+                        className="w-full"
+                        onClick={() => navigate(`/course/${courseId}/learn`)}
+                      >
+                        Continue Learning
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                );
+              })}
+            </div>
           </div>
         )}
 
         <section className="mb-12">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Latest Packages</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <ShoppingCart className="w-6 h-6" />
+            Available Courses
+          </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {latestPackages.map((pkg) => (
-              <div key={pkg.id} className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl hover:scale-[1.02]">
-                <h3 className="font-bold text-lg mb-1">{pkg.title}</h3>
-                <p className="text-sm text-gray-600 mb-3">by {pkg.creator}</p>
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs">
-                    {pkg.language}
-                  </span>
-                  <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs">
-                    {pkg.content}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <span className="text-blue-600 font-bold">{pkg.price} SOL</span>
-                  {!publicKey ? (
-                    <SolanaWalletButton />
-                  ) : (
-                    <div className="space-y-2">
-                      <CustomButton 
-                        onClick={() => handlePurchaseNft(pkg.id, pkg.price)}
-                        disabled={processingNftId === pkg.id}
-                        className="w-full"
-                      >
-                        {processingNftId === pkg.id ? "Processing..." : "Purchase"}
-                      </CustomButton>
-                      {transactionSignature && processingNftId === pkg.id && (
-                        <a 
-                          href={`https://explorer.solana.com/tx/${transactionSignature}?cluster=devnet`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium block text-center"
-                        >
-                          View on Solana Explorer →
-                        </a>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <Card key={pkg.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <CardTitle className="text-xl">{pkg.title}</CardTitle>
+                  <CardDescription>by {pkg.creator}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Badge variant="secondary">{pkg.language}</Badge>
+                    <Badge variant="outline">{pkg.content}</Badge>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-4">{pkg.description}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-bold">{pkg.price} SOL</span>
+                    <Button
+                      variant="default"
+                      className="bg-purple-600 hover:bg-purple-700"
+                      onClick={() => handlePurchaseNft(pkg.id, pkg.price)}
+                      disabled={processingNftId === pkg.id}
+                    >
+                      {processingNftId === pkg.id ? "Processing..." : "Purchase"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </section>
 
         <section>
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Premium Packages</h2>
-          
-          <div className="flex overflow-x-auto pb-4 gap-6 hide-scrollbar">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <Sparkles className="w-6 h-6" />
+            Premium Packages
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {premiumPackages.map((pkg) => (
-              <div 
-                key={pkg.id} 
-                className="min-w-[300px] bg-gradient-to-br from-purple-600 to-blue-500 rounded-xl shadow-lg p-6 text-white transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
-              >
-                <div className="mb-2">
-                  <span className="px-2 py-1 bg-white/20 rounded-full text-xs">
-                    {pkg.language}
-                  </span>
-                </div>
-                <h3 className="font-bold text-xl mb-4">{pkg.title}</h3>
-                <div className="flex justify-between items-end mb-4">
-                  <div>
-                    <div className="text-sm line-through opacity-70">{pkg.regularPrice} SOL</div>
-                    <div className="text-2xl font-bold">{pkg.salePrice} SOL</div>
+              <Card key={pkg.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-xl">{pkg.title}</CardTitle>
+                      <CardDescription>{pkg.language}</CardDescription>
+                    </div>
+                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                      Premium
+                    </Badge>
                   </div>
-                  <div className="bg-white/20 px-3 py-1 rounded-full text-sm">
-                    {pkg.timeLeft} left
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600 mb-4">{pkg.description}</p>
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-sm line-through text-gray-500">{pkg.regularPrice} SOL</span>
+                    <span className="text-lg font-bold text-purple-600">{pkg.salePrice} SOL</span>
                   </div>
-                </div>
-                {!publicKey ? (
-                  <SolanaWalletButton />
-                ) : (
-                  <div className="space-y-2">
-                    <CustomButton 
-                      variant="secondary" 
-                      className="w-full"
-                      onClick={() => handlePurchaseNft(pkg.id, pkg.salePrice)}
-                      disabled={processingNftId === pkg.id}
-                    >
-                      {processingNftId === pkg.id ? "Processing..." : "Purchase Now"}
-                    </CustomButton>
-                    {transactionSignature && processingNftId === pkg.id && (
-                      <a 
-                        href={`https://explorer.solana.com/tx/${transactionSignature}?cluster=devnet`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-white hover:text-gray-200 text-sm font-medium block text-center"
-                      >
-                        View on Solana Explorer →
-                      </a>
-                    )}
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Clock className="w-4 h-4" />
+                    <span>Sale ends in {pkg.timeLeft}</span>
                   </div>
-                )}
-              </div>
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    variant="default"
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    onClick={() => handlePurchaseNft(pkg.id, pkg.salePrice)}
+                    disabled={processingNftId === pkg.id}
+                  >
+                    {processingNftId === pkg.id ? "Processing..." : "Purchase Now"}
+                  </Button>
+                </CardFooter>
+              </Card>
             ))}
           </div>
         </section>

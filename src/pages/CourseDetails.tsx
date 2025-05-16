@@ -1,5 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useRole } from '@/context/RoleContext';
 import AppLayout from '@/components/AppLayout';
 import CustomButton from '@/components/ui/custom-button';
 import { ArrowLeft, Book, Clock, Users, Award } from 'lucide-react';
@@ -231,12 +232,49 @@ const courses: Courses = {
         duration: "2 hours"
       }
     ]
+  },
+  5: {
+    id: 5,
+    title: "Vietnamese for English Speakers",
+    language: "Vietnamese",
+    level: "A1",
+    description: "A comprehensive course for English speakers to learn Vietnamese, covering the alphabet, tones, greetings, numbers, essential phrases, and Vietnamese culture.",
+    duration: "3 hours",
+    lessons: 12,
+    students: 800,
+    price: 0.1,
+    content: [
+      { title: "Vietnamese Alphabet and Pronunciation", description: "Learn the Vietnamese alphabet and how to pronounce each letter and tone.", duration: "20 minutes" },
+      { title: "Basic Greetings and Introductions", description: "Essential greetings and how to introduce yourself in Vietnamese.", duration: "15 minutes" },
+      { title: "Numbers, Dates, and Time", description: "Counting, telling the time, and expressing dates in Vietnamese.", duration: "15 minutes" },
+      { title: "Essential Phrases for Travelers", description: "Key phrases for travel, shopping, and emergencies.", duration: "20 minutes" },
+      { title: "Vietnamese Food and Culture", description: "Explore Vietnamese cuisine and cultural customs.", duration: "20 minutes" }
+    ]
+  },
+  6: {
+    id: 6,
+    title: "English for Vietnamese Speakers",
+    language: "English",
+    level: "A1",
+    description: "A detailed course for Vietnamese speakers to learn English, focusing on pronunciation, grammar, common phrases, numbers, and travel situations.",
+    duration: "3 hours",
+    lessons: 12,
+    students: 950,
+    price: 0.1,
+    content: [
+      { title: "English Alphabet and Pronunciation", description: "Master the English alphabet and difficult sounds for Vietnamese speakers.", duration: "20 minutes" },
+      { title: "Basic English Grammar", description: "Learn the basics of English sentence structure and articles.", duration: "15 minutes" },
+      { title: "Common English Phrases", description: "Useful phrases for daily communication.", duration: "15 minutes" },
+      { title: "Numbers, Dates, and Time in English", description: "How to use numbers, tell the time, and express dates in English.", duration: "20 minutes" },
+      { title: "English for Travel and Shopping", description: "Essential English for travel, shopping, and asking for help.", duration: "20 minutes" }
+    ]
   }
 };
 
 const CourseDetails: React.FC = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const { role } = useRole();
   const course = courses[Number(courseId)];
 
   if (!course) {
@@ -244,7 +282,7 @@ const CourseDetails: React.FC = () => {
       <AppLayout>
         <div className="w-full max-w-3xl mx-auto text-center py-12">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Course Not Found</h1>
-          <CustomButton onClick={() => navigate('/contributor/marketplace')}>
+          <CustomButton onClick={() => navigate(role === 'learner' ? '/marketplace' : '/contributor/marketplace')}>
             Return to Marketplace
           </CustomButton>
         </div>
@@ -259,7 +297,7 @@ const CourseDetails: React.FC = () => {
           <CustomButton
             variant="secondary"
             className="flex items-center gap-2"
-            onClick={() => navigate('/contributor/marketplace')}
+            onClick={() => navigate(role === 'learner' ? '/marketplace' : '/contributor/marketplace')}
           >
             <ArrowLeft size={20} />
             Back to Marketplace
