@@ -1,3 +1,4 @@
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -33,4 +34,8 @@ export default defineConfig(({ mode }) => ({
       include: [/@solana\/.*/, /node_modules/],
     },
   },
+  // Use our custom TypeScript configuration
+  typescript: {
+    tsConfigFilePath: './src/tsconfig.project.json'
+  }
 }));
