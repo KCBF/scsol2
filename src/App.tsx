@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
@@ -15,6 +14,7 @@ import CreateNFT from '@/pages/contributor/CreateNFT';
 import Settings from '@/pages/Settings';
 import { RoleProvider } from '@/context/RoleContext';
 import SolanaWalletProvider from '@/components/SolanaWalletProvider';
+import PurchaseSuccess from './pages/PurchaseSuccess';
 
 // Create a new QueryClient instance
 const queryClient = new QueryClient();
@@ -36,6 +36,7 @@ const App: React.FC = () => {
                 <Route path="/contributor/nft-library" element={<NFTLibrary />} />
                 <Route path="/contributor/marketplace" element={<Marketplace />} />
                 <Route path="/contributor/create-nft" element={<CreateNFT />} />
+                <Route path="/purchase-success" element={<PurchaseSuccess />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <Toaster />

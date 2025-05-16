@@ -159,7 +159,25 @@ const Marketplace: React.FC = () => {
         description: `Transaction confirmed: ${signature.slice(0, 8)}...`,
       });
       
-      navigate(`/nft/${nftId}`);
+      // Find the purchased package details
+      const purchasedPackage = latestPackages.find(pkg => pkg.id === nftId) || 
+                             premiumPackages.find(pkg => pkg.id === nftId);
+      
+      if (!purchasedPackage) {
+        throw new Error('Package not found');
+      }
+
+      // Navigate to success page with purchase details
+      navigate('/purchase-success', {
+        state: {
+          nftId,
+          title: purchasedPackage.title,
+          language: purchasedPackage.language,
+          price: 'price' in purchasedPackage ? purchasedPackage.price : purchasedPackage.salePrice,
+          transactionSignature: signature,
+          type: 'price' in purchasedPackage ? 'regular' : 'premium'
+        }
+      });
     } catch (error) {
       console.error('Transaction error:', error);
       let errorMessage = "Could not complete your purchase";
